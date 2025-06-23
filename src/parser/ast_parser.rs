@@ -1,4 +1,5 @@
 use crate::module_info::*;
+// use crate::parser::semantic_analyzer::SemanticAnalyzer; // TODO: Fix compilation errors
 use anyhow::{anyhow, Result};
 use std::fs;
 use std::path::Path;
@@ -26,13 +27,23 @@ impl AstParser {
     /// Parse a JavaScript/TypeScript file and extract module information
     pub fn parse_file(&self, file_path: &Path) -> Result<NodeModuleInfo> {
         let content = fs::read_to_string(file_path)?;
-        self.parse_content(
-            &content,
-            file_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("unknown"),
-        )
+        let module_name = file_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown");
+        
+        let module_info = self.parse_content(&content, module_name)?;
+        
+        // TODO: Add enhanced semantic analysis for better symbol extraction
+        // let mut analyzer = SemanticAnalyzer::new();
+        // if analyzer.analyze_file(file_path).is_ok() {
+        //     // Extract additional info using semantic analysis
+        //     if analyzer.extract_module_info(&mut module_info).is_ok() {
+        //         // Semantic analysis succeeded - we now have method signatures too
+        //     }
+        // }
+        
+        Ok(module_info)
     }
 
     /// Parse JavaScript/TypeScript content and extract module information

@@ -1,6 +1,7 @@
 use crate::module_info::SignatureInfo;
 use crate::npm_client::NpmClient;
 use crate::parser::ast_parser::AstParser;
+use crate::parser::import_resolver::ImportChainResolver;
 use crate::utils::{extract_base_package, parse_package_spec};
 use anyhow::{anyhow, Result};
 use std::env;
@@ -56,6 +57,12 @@ fn extract_signature_from_local(
     symbol_name: &str,
 ) -> Result<SignatureInfo> {
     let parser = AstParser::new();
+    let import_resolver = ImportChainResolver::new();
+
+    // First try import chain resolution
+    if let Some(signature) = import_resolver.resolve_symbol_signature(package_path, module_path, symbol_name) {
+        return Ok(signature);
+    }
 
     // Try to find the main entry point
     let package_json_path = package_path.join("package.json");

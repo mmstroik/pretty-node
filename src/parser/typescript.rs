@@ -1,4 +1,5 @@
 use crate::module_info::*;
+use crate::parser::parameter_parser::ParameterParser;
 use anyhow::Result;
 use std::fs;
 use std::path::Path;
@@ -82,9 +83,15 @@ impl TypeScriptParser {
             regex::Regex::new(r"(?m)^export\s+(?:declare\s+)?function\s+(\w+)\s*\(([^)]*)\)")
                 .unwrap();
 
+        let param_parser = ParameterParser::new();
+
         for cap in func_regex.captures_iter(content) {
             if let (Some(name), Some(params)) = (cap.get(1), cap.get(2)) {
-                let parameters = self.parse_parameter_list(params.as_str());
+                // Use the improved parameter parser
+                let parameters = param_parser.split_parameters(params.as_str())
+                    .iter()
+                    .map(|p| param_parser.parse_parameter(p))
+                    .collect();
 
                 let func_info = FunctionInfo {
                     name: name.as_str().to_string(),
