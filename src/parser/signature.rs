@@ -75,36 +75,98 @@ fn extract_signature_from_local(
         "index.js".to_string()
     };
 
+    // List of files to try parsing for signature discovery
+    let mut files_to_try = vec![];
+    
+    // Add main entry point
     let entry_path = package_path.join(&main_file);
+    if entry_path.exists() {
+        files_to_try.push(entry_path);
+    }
 
-    // If the specified file doesn't exist, try common variations
-    let file_to_parse = if entry_path.exists() {
-        entry_path
-    } else {
-        // Try index.js, index.ts, etc.
-        let alternatives = vec![
-            package_path.join("index.js"),
-            package_path.join("index.ts"),
-            package_path.join("index.d.ts"),
-            package_path.join("lib/index.js"),
-            package_path.join("lib/index.ts"),
-            package_path.join("src/index.js"),
-            package_path.join("src/index.ts"),
-        ];
+    // Add common entry points
+    let common_entries = vec![
+        "index.js",
+        "index.ts", 
+        "index.d.ts",
+        "lib/index.js",
+        "lib/index.ts",
+        "lib/index.d.ts", 
+        "src/index.js",
+        "src/index.ts",
+        "src/index.d.ts",
+        // Express-specific paths
+        "lib/express.js",
+        "lib/router/index.js",
+        // Lodash-specific paths  
+        "index.js",
+        "lodash.js"
+    ];
 
-        alternatives
-            .into_iter()
-            .find(|p| p.exists())
-            .ok_or_else(|| anyhow!("Could not find entry point for package"))?
-    };
+    for entry in common_entries {
+        let path = package_path.join(entry);
+        if path.exists() && !files_to_try.contains(&path) {
+            files_to_try.push(path);
+        }
+    }
 
-    // Parse the file
-    let module_info = parser.parse_file(&file_to_parse)?;
+    // Try to find files that might contain the symbol
+    if let Ok(entries) = std::fs::read_dir(package_path.join("lib")) {
+        for entry in entries.flatten() {
+            if let Some(name) = entry.file_name().to_str() {
+                if name.to_lowercase().contains(&symbol_name.to_lowercase()) && 
+                   (name.ends_with(".js") || name.ends_with(".ts") || name.ends_with(".d.ts")) {
+                    files_to_try.push(entry.path());
+                }
+            }
+        }
+    }
 
-    // Look for the symbol in functions, classes, etc.
+    // Search through each file for the symbol
+    for file_path in files_to_try {
+        if let Ok(module_info) = parser.parse_file(&file_path) {
+            // Check direct exports first
+            if module_info.exports.contains(&symbol_name.to_string()) {
+                // Look for the symbol in functions, classes, etc.
+                if let Some(signature) = find_symbol_in_module(&module_info, symbol_name) {
+                    return Ok(signature);
+                }
+            }
+
+            // Check all symbols even if not explicitly exported (for popular packages)
+            if let Some(signature) = find_symbol_in_module(&module_info, symbol_name) {
+                return Ok(signature);
+            }
+        }
+    }
+
+    // Try TypeScript definition files more aggressively
+    if let Ok(entries) = std::fs::read_dir(package_path) {
+        for entry in entries.flatten() {
+            if let Some(name) = entry.file_name().to_str() {
+                if name.ends_with(".d.ts") {
+                    if let Ok(ts_parser) = crate::parser::typescript::TypeScriptParser::new().parse_declaration_file(&entry.path()) {
+                        if let Some(signature) = find_symbol_in_module(&ts_parser, symbol_name) {
+                            return Ok(signature);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Err(anyhow!(
+        "Symbol '{}' not found in module '{}'",
+        symbol_name,
+        module_path
+    ))
+}
+
+fn find_symbol_in_module(module_info: &crate::module_info::NodeModuleInfo, symbol_name: &str) -> Option<SignatureInfo> {
+    // Look for the symbol in functions
     for function in &module_info.functions {
         if function.name == symbol_name {
-            return Ok(SignatureInfo {
+            return Some(SignatureInfo {
                 name: function.name.clone(),
                 kind: crate::module_info::SignatureKind::Function,
                 parameters: function.parameters.clone(),
@@ -114,11 +176,12 @@ fn extract_signature_from_local(
         }
     }
 
+    // Look for the symbol in classes
     for class in &module_info.classes {
         if class.name == symbol_name {
             // Return constructor signature for classes
             if let Some(constructor) = &class.constructor {
-                return Ok(SignatureInfo {
+                return Some(SignatureInfo {
                     name: class.name.clone(),
                     kind: crate::module_info::SignatureKind::Constructor,
                     parameters: constructor.parameters.clone(),
@@ -126,7 +189,7 @@ fn extract_signature_from_local(
                     doc_comment: class.doc_comment.clone(),
                 });
             } else {
-                return Ok(SignatureInfo {
+                return Some(SignatureInfo {
                     name: class.name.clone(),
                     kind: crate::module_info::SignatureKind::Constructor,
                     parameters: Vec::new(),
@@ -139,7 +202,7 @@ fn extract_signature_from_local(
         // Check class methods
         for method in &class.methods {
             if method.name == symbol_name {
-                return Ok(SignatureInfo {
+                return Some(SignatureInfo {
                     name: format!("{}.{}", class.name, method.name),
                     kind: crate::module_info::SignatureKind::Method,
                     parameters: method.parameters.clone(),
@@ -150,9 +213,18 @@ fn extract_signature_from_local(
         }
     }
 
-    Err(anyhow!(
-        "Symbol '{}' not found in module '{}'",
-        symbol_name,
-        module_path
-    ))
+    // Look for the symbol in constants/exports
+    for constant in &module_info.constants {
+        if constant.name == symbol_name {
+            return Some(SignatureInfo {
+                name: constant.name.clone(),
+                kind: crate::module_info::SignatureKind::Function, // Treat as function for now
+                parameters: Vec::new(),
+                return_type: constant.value_type.clone(),
+                doc_comment: constant.doc_comment.clone(),
+            });
+        }
+    }
+
+    None
 }

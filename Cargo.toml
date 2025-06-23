@@ -7,6 +7,10 @@ license = "MIT"
 authors = ["pretty-node developers"]
 repository = "https://github.com/example/pretty-node"
 
+[lib]
+name = "pretty_node"
+path = "src/lib.rs"
+
 [[bin]]
 name = "pretty-node"
 path = "src/main.rs"
@@ -28,3 +32,8 @@ tar = "0.4"
 flate2 = "1.0"
 tempfile = "3.8"
 url = "2.5"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.0"
+tokio-test = "0.4"

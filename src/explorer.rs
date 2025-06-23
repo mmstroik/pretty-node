@@ -31,6 +31,18 @@ impl NodeModuleExplorer {
         }
     }
 
+    pub fn package_name(&self) -> &str {
+        &self.package_name
+    }
+
+    pub fn max_depth(&self) -> usize {
+        self.max_depth
+    }
+
+    pub fn find_local_package<P: AsRef<Path>>(&self, search_paths: &[P]) -> Option<PathBuf> {
+        self.npm_client.find_local_package(&self.package_name, search_paths)
+    }
+
     /// Explore the package and return module information
     pub async fn explore(&self) -> Result<NodeModuleInfo> {
         // Parse package specification
