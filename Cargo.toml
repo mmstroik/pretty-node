@@ -1,0 +1,30 @@
+[package]
+name = "pretty-node"
+version = "0.1.0"
+edition = "2021"
+description = "A Node.js package tree explorer for LLMs (and humans)"
+license = "MIT"
+authors = ["pretty-node developers"]
+repository = "https://github.com/example/pretty-node"
+
+[[bin]]
+name = "pretty-node"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.11", features = ["json"] }
+anyhow = "1.0"
+walkdir = "2.4"
+swc_ecma_parser = "0.143"
+swc_ecma_ast = "0.112"
+swc_common = "0.33"
+colored = "2.1"
+regex = "1.10"
+tar = "0.4"
+flate2 = "1.0"
+tempfile = "3.8"
+url = "2.5"

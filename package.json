@@ -1,0 +1,40 @@
+{
+  "name": "pretty-node",
+  "version": "0.1.0",
+  "description": "A Node.js package tree explorer for LLMs (and humans)",
+  "main": "bin/pretty-node",
+  "bin": {
+    "pretty-node": "./bin/pretty-node"
+  },
+  "scripts": {
+    "build": "cargo build --release",
+    "install": "cargo build --release && cp target/release/pretty-node bin/pretty-node",
+    "test": "cargo test",
+    "prepublishOnly": "npm run build && npm run install"
+  },
+  "keywords": [
+    "node",
+    "package",
+    "explorer",
+    "ast",
+    "tree",
+    "cli",
+    "llm"
+  ],
+  "author": "pretty-node developers",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/example/pretty-node.git"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "preferGlobal": true,
+  "files": [
+    "bin/pretty-node",
+    "README.md",
+    "LICENSE"
+  ],
+  "packageManager": "pnpm@10.11.1+sha512.e519b9f7639869dc8d5c3c5dfef73b3f091094b0a006d7317353c72b124e80e1afd429732e28705ad6bfa1ee879c1fce46c128ccebd3192101f43dd67c667912"
+}
