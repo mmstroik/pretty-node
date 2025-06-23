@@ -1,12 +1,12 @@
 # pretty-node
 
-A Node.js package tree explorer for LLMs (and humans), built with Rust for high performance.
+a node.js package tree explorer for LLMs (and humans)
 
 > [!NOTE]
-> This is the Node.js equivalent of [pretty-mod](https://github.com/zzstoatzz/pretty-mod) for Python packages.
+> this is the node.js equivalent of [pretty-mod](https://github.com/zzstoatzz/pretty-mod) for python packages.
 
 ```bash
-# Explore package structure
+# explore package structure
 » pnpx pretty-node tree express
 📦 express@4.18.2
 ├── 📜 __all__: express, Router, static, json, urlencoded
@@ -16,7 +16,7 @@ A Node.js package tree explorer for LLMs (and humans), built with Rust for high 
     ├── ⚡ functions: createApplication
     └── 🔷 classes: Application
 
-# Inspect function signatures
+# inspect function signatures
 » pnpx pretty-node sig express:Router
 📎 Router
 ├── Parameters:
@@ -24,102 +24,81 @@ A Node.js package tree explorer for LLMs (and humans), built with Rust for high 
 └── Returns: Router
 ```
 
-## Installation
+## installation
 
 ```bash
-# Use ephemerally with pnpx (recommended)
+# use ephemerally with pnpx (recommended)
 pnpx pretty-node tree lodash
 
-# Or install globally
+# or install globally
 npm install -g pretty-node
 ```
 
-## CLI Usage
+## cli
+
+pretty-node includes a command-line interface for shell-based exploration:
+
+> [!IMPORTANT]
+> all commands below can be run ephemerally with `pnpx`, e.g. `pnpx pretty-node tree express`
 
 ```bash
-# Explore package structure
+# explore package structure
 pretty-node tree express
-pretty-node tree @types/node --depth 3
 
-# Display function signatures  
+# go deeper into the tree with --depth
+pretty-node tree express --depth 3
+
+# display function signatures  
 pretty-node sig express:Router
-pretty-node sig lodash:merge
 
-# Get JSON output for programmatic use
+# get JSON output for programmatic use
 pretty-node tree express -o json | jq '.exports'
 pretty-node sig express:Router -o json
 
-# Suppress download messages
+# explore packages even without having them installed
+pretty-node tree lodash
+pretty-node tree @types/node --depth 1
+
+# use --quiet to suppress download messages
 pretty-node tree express --quiet
 
-# Version specifiers
+# version specifiers - explore specific versions
 pretty-node tree express@4.18.0
 pretty-node sig express@4.18.0:Router
+
+# scoped packages
+pretty-node tree @types/node
+pretty-node sig @types/node:Buffer
 ```
 
-## Features
+## customization
 
-- **🚀 High Performance**: Rust-based implementation for fast parsing
-- **📦 Auto-download**: Automatically downloads packages from npm
-- **🔍 AST Analysis**: Deep parsing of JavaScript/TypeScript files
-- **📊 Multiple Formats**: Pretty-printed trees or JSON output
-- **🎨 Customizable**: Environment variables for colors and icons
-- **💾 Smart Caching**: Uses local node_modules when available
+pretty-node supports extensive customization through environment variables:
 
-## Customization
-
-### Display Characters
+### display characters
 
 ```bash
-# ASCII mode for terminals without Unicode
+# use ASCII-only mode for terminals without Unicode support
 PRETTY_NODE_ASCII=1 pretty-node tree express
 
-# Customize icons
+# customize individual icons
 PRETTY_NODE_MODULE_ICON="[M]" pretty-node tree express
 PRETTY_NODE_FUNCTION_ICON="fn" pretty-node tree express
+PRETTY_NODE_CLASS_ICON="cls" pretty-node tree express
 ```
 
-### Colors
+### colors
 
 ```bash
-# Disable colors
+# disable colors entirely
 PRETTY_NODE_NO_COLOR=1 pretty-node tree express
-# or use standard
+# or use the standard NO_COLOR environment variable
 NO_COLOR=1 pretty-node tree express
 ```
 
-## Development
+## development
 
 ```bash
-# Clone and build
-git clone <repo-url>
-cd pretty-node
-cargo build --release
-
-# Run tests
-cargo test
-
-# Install for development
-npm run install
+gh repo clone <your-org>/pretty-node && cd pretty-node
+just --list # see https://github.com/casey/just
 ```
-
-## Architecture
-
-- **Rust Core**: High-performance AST parsing and module analysis
-- **npm Integration**: Auto-download and package resolution
-- **Multi-format Support**: JavaScript, TypeScript, and declaration files
-- **CLI Distribution**: Distributed via npm for easy global installation
-
-## Comparison with pretty-mod
-
-| Feature | pretty-node | pretty-mod |
-|---------|-------------|------------|
-| Language | Node.js/npm | Python/pip |
-| Distribution | `pnpx pretty-node` | `uvx pretty-mod` |
-| Core Engine | Rust | Rust |
-| Package Source | npm registry | PyPI |
-| File Types | JS/TS/d.ts | .py |
-
-## License
-
-MIT

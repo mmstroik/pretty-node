@@ -2,7 +2,7 @@ use crate::module_info::*;
 use anyhow::{anyhow, Result};
 use std::fs;
 use std::path::Path;
-use swc_common::{sync::Lrc, SourceMap, FileName};
+use swc_common::{sync::Lrc, FileName, SourceMap};
 use swc_ecma_ast::*;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax, TsConfig};
 
@@ -22,22 +22,25 @@ impl AstParser {
             source_map: Lrc::new(SourceMap::default()),
         }
     }
-    
+
     /// Parse a JavaScript/TypeScript file and extract module information
     pub fn parse_file(&self, file_path: &Path) -> Result<NodeModuleInfo> {
         let content = fs::read_to_string(file_path)?;
-        self.parse_content(&content, file_path.file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown"))
+        self.parse_content(
+            &content,
+            file_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("unknown"),
+        )
     }
-    
+
     /// Parse JavaScript/TypeScript content and extract module information
     pub fn parse_content(&self, content: &str, module_name: &str) -> Result<NodeModuleInfo> {
-        let source_file = self.source_map.new_source_file(
-            FileName::Anon,
-            content.to_string(),
-        );
-        
+        let source_file = self
+            .source_map
+            .new_source_file(FileName::Anon, content.to_string());
+
         let lexer = Lexer::new(
             Syntax::Typescript(TsConfig {
                 tsx: true,
@@ -48,21 +51,26 @@ impl AstParser {
             StringInput::from(&*source_file),
             None,
         );
-        
+
         let mut parser = Parser::new_from(lexer);
-        let module = parser.parse_module()
+        let module = parser
+            .parse_module()
             .map_err(|e| anyhow!("Parse error: {:?}", e))?;
-        
+
         let mut module_info = NodeModuleInfo::new(module_name.to_string());
-        
+
         for item in &module.body {
             self.process_module_item(item, &mut module_info)?;
         }
-        
+
         Ok(module_info)
     }
-    
-    fn process_module_item(&self, item: &ModuleItem, module_info: &mut NodeModuleInfo) -> Result<()> {
+
+    fn process_module_item(
+        &self,
+        item: &ModuleItem,
+        module_info: &mut NodeModuleInfo,
+    ) -> Result<()> {
         match item {
             ModuleItem::ModuleDecl(decl) => {
                 self.process_module_decl(decl, module_info)?;
@@ -73,8 +81,12 @@ impl AstParser {
         }
         Ok(())
     }
-    
-    fn process_module_decl(&self, decl: &ModuleDecl, module_info: &mut NodeModuleInfo) -> Result<()> {
+
+    fn process_module_decl(
+        &self,
+        decl: &ModuleDecl,
+        module_info: &mut NodeModuleInfo,
+    ) -> Result<()> {
         match decl {
             ModuleDecl::ExportDecl(export_decl) => {
                 self.process_decl(&export_decl.decl, module_info, true)?;
@@ -100,7 +112,8 @@ impl AstParser {
                     }
                     DefaultDecl::Fn(fn_expr) => {
                         if let Some(ident) = &fn_expr.ident {
-                            let func_info = self.extract_function_info(&fn_expr.function, &ident.sym);
+                            let func_info =
+                                self.extract_function_info(&fn_expr.function, &ident.sym);
                             module_info.add_function(func_info);
                         }
                     }
@@ -112,18 +125,20 @@ impl AstParser {
         }
         Ok(())
     }
-    
+
     fn process_stmt(&self, stmt: &Stmt, module_info: &mut NodeModuleInfo) -> Result<()> {
-        match stmt {
-            Stmt::Decl(decl) => {
-                self.process_decl(decl, module_info, false)?;
-            }
-            _ => {}
+        if let Stmt::Decl(decl) = stmt {
+            self.process_decl(decl, module_info, false)?;
         }
         Ok(())
     }
-    
-    fn process_decl(&self, decl: &Decl, module_info: &mut NodeModuleInfo, is_export: bool) -> Result<()> {
+
+    fn process_decl(
+        &self,
+        decl: &Decl,
+        module_info: &mut NodeModuleInfo,
+        is_export: bool,
+    ) -> Result<()> {
         match decl {
             Decl::Fn(fn_decl) => {
                 let func_info = self.extract_function_info(&fn_decl.function, &fn_decl.ident.sym);
@@ -146,7 +161,7 @@ impl AstParser {
                         if is_export {
                             module_info.exports.push(name.clone());
                         }
-                        
+
                         // Try to determine if this is a function or constant
                         if let Some(init) = &decl.init {
                             match &**init {
@@ -216,12 +231,14 @@ impl AstParser {
         }
         Ok(())
     }
-    
+
     fn extract_function_info(&self, function: &Function, name: &str) -> FunctionInfo {
-        let parameters = function.params.iter().map(|param| {
-            self.extract_parameter_info(&param.pat)
-        }).collect();
-        
+        let parameters = function
+            .params
+            .iter()
+            .map(|param| self.extract_parameter_info(&param.pat))
+            .collect();
+
         FunctionInfo {
             name: name.to_string(),
             parameters,
@@ -231,23 +248,27 @@ impl AstParser {
             doc_comment: None,
         }
     }
-    
+
     fn extract_class_info(&self, class: &Class, name: &str) -> ClassInfo {
         let mut methods = Vec::new();
         let mut properties = Vec::new();
         let mut constructor = None;
-        
+
         for member in &class.body {
             match member {
                 ClassMember::Constructor(ctor) => {
                     let func_info = FunctionInfo {
                         name: "constructor".to_string(),
-                        parameters: ctor.params.iter().filter_map(|param| {
-                            match param {
-                                ParamOrTsParamProp::Param(p) => Some(self.extract_parameter_info(&p.pat)),
+                        parameters: ctor
+                            .params
+                            .iter()
+                            .filter_map(|param| match param {
+                                ParamOrTsParamProp::Param(p) => {
+                                    Some(self.extract_parameter_info(&p.pat))
+                                }
                                 _ => None,
-                            }
-                        }).collect(),
+                            })
+                            .collect(),
                         return_type: None,
                         is_async: false,
                         is_generator: false,
@@ -276,7 +297,7 @@ impl AstParser {
                 _ => {}
             }
         }
-        
+
         ClassInfo {
             name: name.to_string(),
             constructor,
@@ -287,18 +308,16 @@ impl AstParser {
             doc_comment: None,
         }
     }
-    
+
     fn extract_parameter_info(&self, pat: &Pat) -> Parameter {
         match pat {
-            Pat::Ident(ident) => {
-                Parameter {
-                    name: ident.id.sym.to_string(),
-                    param_type: ident.type_ann.as_ref().map(|_| "unknown".to_string()),
-                    is_optional: ident.optional,
-                    is_rest: false,
-                    default_value: None,
-                }
-            }
+            Pat::Ident(ident) => Parameter {
+                name: ident.id.sym.to_string(),
+                param_type: ident.type_ann.as_ref().map(|_| "unknown".to_string()),
+                is_optional: ident.optional,
+                is_rest: false,
+                default_value: None,
+            },
             Pat::Rest(rest) => {
                 if let Pat::Ident(ident) = &*rest.arg {
                     Parameter {
@@ -337,22 +356,21 @@ impl AstParser {
                     }
                 }
             }
-            _ => {
-                Parameter {
-                    name: "unknown".to_string(),
-                    param_type: None,
-                    is_optional: false,
-                    is_rest: false,
-                    default_value: None,
-                }
-            }
+            _ => Parameter {
+                name: "unknown".to_string(),
+                param_type: None,
+                is_optional: false,
+                is_rest: false,
+                default_value: None,
+            },
         }
     }
-    
+
+    #[allow(dead_code)]
     fn ident_to_string(&self, ident: &Ident) -> String {
         ident.sym.to_string()
     }
-    
+
     fn module_export_name_to_string(&self, name: &ModuleExportName) -> String {
         match name {
             ModuleExportName::Ident(ident) => ident.sym.to_string(),

@@ -106,23 +106,23 @@ impl NodeModuleInfo {
             submodules: HashMap::new(),
         }
     }
-    
+
     pub fn add_submodule(&mut self, name: String, module: NodeModuleInfo) {
         self.submodules.insert(name, module);
     }
-    
+
     pub fn add_function(&mut self, function: FunctionInfo) {
         self.functions.push(function);
     }
-    
+
     pub fn add_class(&mut self, class: ClassInfo) {
         self.classes.push(class);
     }
-    
+
     pub fn add_type(&mut self, type_info: TypeInfo) {
         self.types.push(type_info);
     }
-    
+
     pub fn add_constant(&mut self, constant: ConstantInfo) {
         self.constants.push(constant);
     }

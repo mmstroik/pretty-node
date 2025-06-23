@@ -55,16 +55,21 @@ enum OutputFormat {
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    
+
     let result = match cli.command {
-        Commands::Tree { package, depth, quiet, output } => {
-            handle_tree_command(&package, depth, quiet, output).await
-        }
-        Commands::Sig { import_path, quiet, output } => {
-            handle_sig_command(&import_path, quiet, output).await
-        }
+        Commands::Tree {
+            package,
+            depth,
+            quiet,
+            output,
+        } => handle_tree_command(&package, depth, quiet, output).await,
+        Commands::Sig {
+            import_path,
+            quiet,
+            output,
+        } => handle_sig_command(&import_path, quiet, output).await,
     };
-    
+
     if let Err(e) = result {
         if !e.to_string().is_empty() {
             eprintln!("Error: {}", e);
@@ -80,10 +85,10 @@ async fn handle_tree_command(
     output: OutputFormat,
 ) -> anyhow::Result<()> {
     use crate::explorer::NodeModuleExplorer;
-    
+
     let explorer = NodeModuleExplorer::new(package.to_string(), depth, quiet);
     let tree = explorer.explore().await?;
-    
+
     match output {
         OutputFormat::Pretty => {
             let formatter = tree_formatter::TreeFormatter::new();
@@ -93,7 +98,7 @@ async fn handle_tree_command(
             println!("{}", serde_json::to_string_pretty(&tree)?);
         }
     }
-    
+
     Ok(())
 }
 
@@ -103,9 +108,9 @@ async fn handle_sig_command(
     output: OutputFormat,
 ) -> anyhow::Result<()> {
     use crate::parser::signature::extract_signature;
-    
+
     let signature = extract_signature(import_path, quiet).await?;
-    
+
     match output {
         OutputFormat::Pretty => {
             let formatter = tree_formatter::TreeFormatter::new();
@@ -115,6 +120,6 @@ async fn handle_sig_command(
             println!("{}", serde_json::to_string_pretty(&signature)?);
         }
     }
-    
+
     Ok(())
 }
